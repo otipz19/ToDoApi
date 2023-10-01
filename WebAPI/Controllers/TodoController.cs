@@ -19,13 +19,14 @@ namespace WebAPI.Controllers
 
         // GET: api/todos
         [HttpGet]
-        public async Task<ActionResult<PaginatedList<TodoItem>>> GetTodoItems(
-            int page = 1,
-            int pageSize = 10)
+        public async Task<ActionResult<PaginatedList<TodoItem>>> GetTodoItems(string searchTerm = null, string sort = null, int page = 1, int pageSize = 10)
         {
-            var query = _context.TodoItems.AsQueryable();
-            var paginatedList = await PaginatedList<TodoItem>
-                .CreateAsync(query, page, pageSize);
+            var query = _context.TodoItems.AsNoTracking().AsQueryable();
+
+            query = ApplySearch(query, searchTerm);
+            query = ApplySort(query, sort);
+
+            var paginatedList = await PaginatedList<TodoItem>.CreateAsync(query, page, pageSize);
             return paginatedList;
         }
 
@@ -94,6 +95,34 @@ namespace WebAPI.Controllers
             await _context.SaveChangesAsync();
 
             return NoContent();
+        }
+
+        private IQueryable<TodoItem> ApplySearch(IQueryable<TodoItem> query, string searchTerm)
+        {
+            if (!string.IsNullOrEmpty(searchTerm))
+            {
+                query = query.Where(t => t.Title.Contains(searchTerm));
+            }
+
+            return query;
+        }
+
+        private IQueryable<TodoItem> ApplySort(IQueryable<TodoItem> query, string sort)
+        {
+            if (!string.IsNullOrEmpty(sort))
+            {
+                switch (sort.ToLower())
+                {
+                    case "title_asc":
+                        query = query.OrderBy(t => t.Title);
+                        break;
+                    case "title_desc":
+                        query = query.OrderByDescending(t => t.Title);
+                        break;
+                }
+            }
+
+            return query;
         }
     }
 }
