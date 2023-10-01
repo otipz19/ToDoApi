@@ -19,7 +19,11 @@ namespace WebAPI.Controllers
 
         // GET: api/todos
         [HttpGet]
-        public async Task<ActionResult<PaginatedList<TodoItem>>> GetTodoItems(string searchTerm = null, string sort = null, int page = 1, int pageSize = 10)
+        public async Task<ActionResult<PaginatedList<TodoItem>>> GetTodoItems(
+            string? searchTerm,
+            string? sort,
+            int page = 1,
+            int pageSize = 10)
         {
             var query = _context.TodoItems.AsNoTracking().AsQueryable();
 
@@ -74,7 +78,8 @@ namespace WebAPI.Controllers
                 return NotFound();
             }
 
-            _context.TodoItems.Update(todoItem);
+            toUpdate.Title = todoItem.Title;
+            toUpdate.Description = todoItem.Description;
             await _context.SaveChangesAsync();
 
             return NoContent();
@@ -97,7 +102,7 @@ namespace WebAPI.Controllers
             return NoContent();
         }
 
-        private IQueryable<TodoItem> ApplySearch(IQueryable<TodoItem> query, string searchTerm)
+        private IQueryable<TodoItem> ApplySearch(IQueryable<TodoItem> query, string? searchTerm)
         {
             if (!string.IsNullOrEmpty(searchTerm))
             {
@@ -107,20 +112,16 @@ namespace WebAPI.Controllers
             return query;
         }
 
-        private IQueryable<TodoItem> ApplySort(IQueryable<TodoItem> query, string sort)
+        private IQueryable<TodoItem> ApplySort(IQueryable<TodoItem> query, string? sort)
         {
-            if (!string.IsNullOrEmpty(sort))
+            if (string.IsNullOrEmpty(sort)) return query;
+
+            query = sort.ToLower() switch
             {
-                switch (sort.ToLower())
-                {
-                    case "title_asc":
-                        query = query.OrderBy(t => t.Title);
-                        break;
-                    case "title_desc":
-                        query = query.OrderByDescending(t => t.Title);
-                        break;
-                }
-            }
+                "title_asc" => query.OrderBy(t => t.Title),
+                "title_desc" => query.OrderByDescending(t => t.Title),
+                _ => query
+            };
 
             return query;
         }
